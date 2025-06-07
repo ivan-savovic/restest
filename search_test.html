@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Finder Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .search-results {
+            display: none;
+        }
+        .loading-bar {
+            width: 0%;
+            transition: width 0.5s;
+        }
+        .platform-icon {
+            transition: all 0.3s ease;
+        }
+        .platform-icon:hover {
+            transform: scale(1.1);
+        }
+        .profile-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-12">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-indigo-700 mb-4">Social Finder</h1>
+            <p class="text-gray-600 max-w-2xl mx-auto">Disclaimer: Ovo je samo UI simulacija. Stvarno pretraživanje korisnika zahteva direktno pretraživanje na svakoj platformi uz poštovanje njihovih pravila privatnosti.</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl mx-auto p-6">
+            <div class="flex flex-col space-y•4">
+                <div class="flex flex-col space-y-4">
+                    <div class="flex items-center border-b border-indigo-200 pb-4">
+                        <i class="fas fa-search text-indigo-500 mr-3"></i>
+                        <input type="text" id="searchInput" placeholder="Unesi ime, nadimak ili lokaciju..." 
+                               class="flex-1 outline-none text-gray-700 placeholder-gray-400">
+                    </div>
+                    <div class="flex items-center justify-center">
+                        <label for="imageUpload" class="cursor-pointer">
+                            <div class="w-32 h-32 border-2 border-dashed border-indigo-300 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-image text-indigo-400 text-2xl"></i>
+                                <span class="sr-only">Upload image</span>
+                            </div>
+                            <input type="file" id="imageUpload" accept="image/*" class="hidden">
+                        </label>
+                    </div>
+                    <div id="imagePreview" class="hidden flex justify-center">
+                        <img id="previewImage" class="max-w-full h-32 object-contain rounded-lg">
+                    </div>
+                </div>
+
+                <div class="flex justify-around py-5">
+                    <div class="platform-icon cursor-pointer" data-platform="instagram">
+                        <div class="w-14 h-14 bg-gradient-to-tr from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white">
+                            <i class="fab fa-instagram text-2xl"></i>
+                        </div>
+                        <p class="text-center text-sm mt-1">Instagram</p>
+                    </div>
+                    <div class="platform-icon cursor-pointer" data-platform="facebook">
+                        <div class="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white">
+                            <i class="fab fa-facebook-f text-2xl"></i>
+                        </div>
+                        <p class="text-center text-sm mt-1">Facebook</p>
+                    </div>
+                    <div class="platform-icon cursor-pointer" data-platform="tiktok">
+                        <div class="w-14 h-14 bg-black rounded-full flex items-center justify-center text-white">
+                            <i class="fab fa-tiktok text-2xl"></i>
+                        </div>
+                        <p class="text-center text-sm mt-1">TikTok</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3 pb-3">
+                    <div class="h-3 bg-gray-200 rounded-full flex-1 overflow-hidden">
+                        <div id="loadingBar" class="loading-bar h-full bg-indigo-500"></div>
+                    </div>
+                    <span id="progressText" class="text-sm text-gray-500">0%</span>
+                </div>
+            </div>
+
+            <button id="searchBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg mt-4 transition duration-300">
+                Pretraži društvene mreže
+            </button>
+        </div>
+
+        <div id="searchResults" class="search-results mt-12 max-w-4xl mx-auto">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6 px-4">Rezultati pretrage</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="resultsContainer">
+                <!-- Results will be generated here by JavaScript -->
+            </div>
+        </div>
+
+        <div class="text-center mt-16 text-gray-500 text-sm">
+            <p>Zaboravili ste da stvarni način za pronalaženje nekoga na društvenim mrežama je:</p>
+            <div class="flex justify-center space-x-6 mt-4">
+                <a href="https://www.instagram.com" target="_blank" class="text-indigo-600 hover:underline">1. Idite direktno na Instagram</a>
+                <a href="https://www.facebook.com" target="_blank" class="text-indigo-600 hover:underline">2. Pretražite na Facebooku</a>
+                <a href="https://www.tiktok.com" target="_blank" class="text-indigo-600 hover:underline">3. Potražite na TikTok-u</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchBtn = document.getElementById('searchBtn');
+            const searchInput = document.getElementById('searchInput');
+            const loadingBar = document.getElementById('loadingBar');
+            const progressText = document.getElementById('progressText');
+            const searchResults = document.getElementById('searchResults');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const platformIcons = document.querySelectorAll('.platform-icon');
+            
+            let selectedPlatforms = [];
+
+            // API Simulation Configuration
+            const API_SIMULATION = {
+                endpoints: {
+                    instagram: 'https://graph.instagram.com/v12.0/users/search',
+                    facebook: 'https://graph.facebook.com/v12.0/users',
+                    tiktok: 'https://open.tiktokapis.com/v2/user/search'
+                },
+                delays: {
+                    instagram: 800,
+                    facebook: 1000,
+                    tiktok: 1200
+                }
+            };
+
+            // Auto-select all platforms when image is uploaded
+            const imageUpload = document.getElementById('imageUpload');
+            const previewImage = document.getElementById('previewImage');
+            const imagePreview = document.getElementById('imagePreview');
+
+            imageUpload.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        previewImage.src = event.target.result;
+                        imagePreview.classList.remove('hidden');
+                        
+                        // Auto select all platforms
+                        selectedPlatforms = ['instagram', 'facebook', 'tiktok'];
+                        platformIcons.forEach(icon => {
+                            icon.style.opacity = '1';
+                        });
+                    };
+                    reader.readAsDataURL(e.target.files[0]);
+                }
+            });
+
+            // Platform selection
+            platformIcons.forEach(icon => {
+                icon.addEventListener('click', function() {
+                    const platform = this.getAttribute('data-platform');
+                    if (selectedPlatforms.includes(platform)) {
+                        selectedPlatforms = selectedPlatforms.filter(p => p !== platform);
+                        this.style.opacity = '0.5';
+                    } else {
+                        selectedPlatforms.push(platform);
+                        this.style.opacity = '1';
+                    }
+                });
+            });
+
+            // Professional Search Function
+            searchBtn.addEventListener('click', async function() {
+                if (searchInput.value.trim() === '' && imageUpload.files.length === 0) {
+                    alert('Please enter a search term or upload an image');
+                    return;
+                }
+
+                if (selectedPlatforms.length === 0) {
+                    alert('Please select at least one platform');
+                    return;
+                }
+
+                // Reset UI
+                searchResults.style.display = 'none';
+                resultsContainer.innerHTML = '';
+                loadingBar.style.width = '0%';
+                progressText.textContent = '0%';
+
+                // Simulate API calls with progress updates
+                try {
+                    let progress = 0;
+                    const totalSteps = selectedPlatforms.length * 2; // Init + search for each platform
+                    
+                    const progressInterval = setInterval(() => {
+                        progress = Math.min(progress + (100 / totalSteps), 95);
+                        loadingBar.style.width = progress + '%';
+                        progressText.textContent = Math.floor(progress) + '%';
+                    }, 300);
+
+                    // Simulate parallel API requests
+                    const apiPromises = selectedPlatforms.map(platform => 
+                        simulateAPIRequest(platform, searchInput.value.trim(), imageUpload.files.length > 0)
+                    );
+
+                    const results = await Promise.all(apiPromises);
+                    clearInterval(progressInterval);
+
+                    // Final loading update
+                    loadingBar.style.width = '100%';
+                    progressText.textContent = '100%';
+
+                    // Process and display results
+                    displayResults(results.flat());
+                    searchResults.style.display = 'block';
+
+                } catch (error) {
+                    console.error('Search error:', error);
+                    alert('Error during search. Please try again.');
+                }
+            });
+
+            // Simulate API request with delay
+            async function simulateAPIRequest(platform, query, hasImage) {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        // Generate mock API response
+                        const mockResponse = generateMockResults(platform, query, hasImage);
+                        resolve(mockResponse);
+                    }, API_SIMULATION.delays[platform]);
+                });
+            }
+
+            // Generate professional mock results
+            function generateMockResults(platform, query, hasImage) {
+                const platformData = {
+                    instagram: {
+                        color: 'from-purple-500 to-pink-500',
+                        icon: 'fab fa-instagram',
+                        base: 'https://www.instagram.com/'
+                    },
+                    facebook: {
+                        color: 'bg-blue-600',
+                        icon: 'fab fa-facebook-f',
+                        base: 'https://www.facebook.com/'
+                    },
+                    tiktok: {
+                        color: 'bg-black',
+                        icon: 'fab fa-tiktok',
+                        base: 'https://www.tiktok.com/@'
+                    }
+                };
+
+                const results = [];
+                const count = Math.floor(Math.random() * 2) + 1; // 1-2 results per platform
+                
+                for (let i = 0; i < count; i++) {
+                    const username = query.toLowerCase().replace(/\s+/g, '') + 
+                                    (i > 0 ? Math.floor(Math.random() * 100) : '');
+                    
+                    results.push({
+                        id: `id_${platform}_${Math.random().toString(36).substr(2, 9)}`,
+                        name: query.split(' ')[0] + ' ' + ['Petrović', 'Marković', 'Jovanović'][Math.floor(Math.random() * 3)],
+                        username: username,
+                        platform: platform,
+                        platformUrl: platformData[platform].base + username,
+                        image: hasImage ? previewImage.src : `https://source.unsplash.com/random/300x300/?profile,${query.split(' ')[0]}`,
+                        bio: platform === 'instagram' ? '✨ Digital creator | Photography | Travel' : 
+                             platform === 'facebook' ? 'Works at Faculty of Technology | Studies Computer Science' : 
+                             'TikTok content creator | #Dance #Comedy',
+                        isVerified: Math.random() > 0.7,
+                        stats: {
+                            followers: Math.floor(Math.random() * 10000) + 100,
+                            following: Math.floor(Math.random() * 1000)
+                        },
+                        meta: {
+                            color: platformData[platform].color,
+                            icon: platformData[platform].icon
+                        }
+                    });
+                }
+                
+                return results;
+            }
+
+            // Professional results display
+            function displayResults(results) {
+                if (results.length === 0) {
+                    resultsContainer.innerHTML = `
+                        <div class="col-span-full text-center py-8">
+                            <i class="fas fa-search text-4xl text-gray-300 mb-4"></i>
+                            <p class="text-gray-500">No results found. Try a different search term or platforms.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                results.forEach(profile => {
+                    const card = document.createElement('div');
+                    card.className = 'profile-card bg-white rounded-lg shadow-md overflow-hidden transition duration-300 hover:shadow-lg';
+                    card.innerHTML = `
+                        <div class="h-40 relative group">
+                            <img src="${profile.image}" alt="${profile.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                            <div class="absolute bottom-0 left-0 right-0 p-4 flex items-center justify-between">
+                                <div>
+                                    <h3 class="font-semibold text-lg text-white">${profile.name}</h3>
+                                    <p class="text-gray-200">@${profile.username}</p>
+                                </div>
+                                ${profile.isVerified ? '<i class="fas fa-check-circle text-blue-400" title="Verified"></i>' : ''}
+                            </div>
+                            <div class="absolute bottom-0 left-0 right-0 h-12 flex items-center justify-center ${profile.meta.color} ${profile.platform === 'instagram' ? 'bg-gradient-to-tr' : ''}">
+                                <i class="${profile.meta.icon} text-white text-xl"></i>
+                                <span class="ml-2 text-white text-sm">${profile.platform.charAt(0).toUpperCase() + profile.platform.slice(1)}</span>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <p class="text-gray-700 mb-3 truncate-2-lines" style="--lines: 2">${profile.bio}</p>
+                            <div class="flex justify-between text-sm text-gray-500 mb-4">
+                                <span><strong>${profile.stats.followers.toLocaleString()}</strong> Followers</span>
+                                <span><strong>${profile.stats.following.toLocaleString()}</strong> Following</span>
+                            </div>
+                            <a href="${profile.platformUrl}" target="_blank" class="block w-full py-2 ${profile.platform === 'instagram' ? 'bg-gradient-to-r from-purple-500 to-pink-500' : profile.platform === 'facebook' ? 'bg-blue-600' : 'bg-black'} text-white rounded-lg text-center hover:opacity-90 transition duration-300">
+                                View on ${profile.platform.charAt(0).toUpperCase() + profile.platform.slice(1)}
+                            </a>
+                        </div>
+                    `;
+                    resultsContainer.appendChild(card);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
