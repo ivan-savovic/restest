@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SocialFinder Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f0f0f;
+        }
+        .search-results {
+            display: none;
+        }
+        .loading-bar {
+            width: 0%;
+            transition: width 0.4s ease-in-out;
+            background: linear-gradient(90deg, #eab308, #ca8a04);
+        }
+        .platform-icon:hover {
+            transform: scale(1.05);
+        }
+        .platform-icon.selected {
+            filter: none;
+            opacity: 1;
+            border: 2px solid #eab308;
+            border-radius: 50%;
+        }
+        .platform-icon.unselected {
+            filter: grayscale(1);
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-white">
+    <div class="container mx-auto px-4 py-12">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-yellow-400 mb-2">SocialFinder Pro</h1>
+            <p class="text-sm text-yellow-100">UI simulacija profesionalnog alata za pretragu socijalnih mreža.</p>
+        </div>
+
+        <div class="max-w-3xl mx-auto bg-gray-900 p-6 rounded-lg shadow-md border border-yellow-400/20">
+            <div class="flex items-center mb-4 border-b border-yellow-500 pb-3">
+                <i class="fas fa-search text-yellow-400 mr-3 text-xl"></i>
+                <input type="text" id="searchInput" placeholder="Unesite ime, nadimak..." class="flex-1 bg-transparent outline-none text-white placeholder-yellow-300">
+            </div>
+
+            <div class="flex justify-around mb-6">
+                <div class="platform-icon cursor-pointer unselected" data-platform="instagram">
+                    <i class="fab fa-instagram text-3xl text-pink-400"></i>
+                </div>
+                <div class="platform-icon cursor-pointer unselected" data-platform="facebook">
+                    <i class="fab fa-facebook text-3xl text-blue-400"></i>
+                </div>
+                <div class="platform-icon cursor-pointer unselected" data-platform="tiktok">
+                    <i class="fab fa-tiktok text-3xl text-white"></i>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+                    <div id="loadingBar" class="loading-bar h-full"></div>
+                </div>
+                <span id="progressText" class="text-sm">0%</span>
+            </div>
+
+            <button id="searchBtn" class="w-full py-3 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold rounded-md transition">Pretraži</button>
+        </div>
+
+        <div id="searchResults" class="search-results mt-10">
+            <h2 class="text-2xl font-bold text-yellow-400 mb-4">Rezultati</h2>
+            <div id="resultsContainer" class="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3"></div>
+        </div>
+    </div>
+
+    <script>
+        const searchBtn = document.getElementById('searchBtn');
+        const searchInput = document.getElementById('searchInput');
+        const loadingBar = document.getElementById('loadingBar');
+        const progressText = document.getElementById('progressText');
+        const searchResults = document.getElementById('searchResults');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const platformIcons = document.querySelectorAll('.platform-icon');
+
+        let selectedPlatforms = [];
+
+        platformIcons.forEach(icon => {
+            icon.addEventListener('click', () => {
+                const platform = icon.getAttribute('data-platform');
+                if (selectedPlatforms.includes(platform)) {
+                    selectedPlatforms = selectedPlatforms.filter(p => p !== platform);
+                    icon.classList.remove('selected');
+                    icon.classList.add('unselected');
+                } else {
+                    selectedPlatforms.push(platform);
+                    icon.classList.add('selected');
+                    icon.classList.remove('unselected');
+                }
+            });
+        });
+
+        searchBtn.addEventListener('click', () => {
+            const query = searchInput.value.trim();
+            if (!query || selectedPlatforms.length === 0) {
+                alert('Unesite ime i izaberite platforme.');
+                return;
+            }
+
+            loadingBar.style.width = '0%';
+            progressText.textContent = '0%';
+            searchResults.style.display = 'none';
+            resultsContainer.innerHTML = '';
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    progress = 100;
+                    loadingBar.style.width = '100%';
+                    progressText.textContent = '100%';
+                    showResults(query);
+                } else {
+                    loadingBar.style.width = progress + '%';
+                    progressText.textContent = progress + '%';
+                }
+            }, 200);
+        });
+
+        function showResults(query) {
+            searchResults.style.display = 'block';
+            for (let i = 0; i < 6; i++) {
+                const card = document.createElement('div');
+                card.className = 'bg-gray-800 rounded-lg p-4 shadow-md';
+                card.innerHTML = `
+                    <h3 class="text-lg font-semibold mb-2 text-yellow-300">${query} Profil ${i + 1}</h3>
+                    <p class="text-sm text-gray-300">@${query.toLowerCase()}_${i}</p>
+                    <p class="text-sm text-gray-400 mt-2">Bio opis korisnika...</p>
+                `;
+                resultsContainer.appendChild(card);
+            }
+        }
+    </script>
+</body>
+</html>
