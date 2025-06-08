@@ -1,30 +1,51 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SocialFinder Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-  />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body {
       font-family: 'Inter', sans-serif;
       background-color: #0f0f0f;
     }
+    .dark-mode {
+      background-color: #f5f5f5;
+      color: #111827;
+    }
+    @media (max-width: 768px) {
+      .mobile-flex {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem;
+      }
+      .mobile-flex > * {
+        width: 100%;
+      }
+      .mobile-grid {
+        display: grid;
+        grid-template-columns: 1fr !important;
+      }
+    }
   </style>
 </head>
-<body class="text-white">
-  <div class="container mx-auto px-4 py-12">
-    <div class="text-center mb-10">
-      <h1 class="text-4xl font-bold text-yellow-400 mb-2">SocialFinder Pro</h1>
-      <p class="text-sm text-yellow-100">
-        Unesite ime, email ili broj telefona kako biste pronašli javno dostupne
-        informacije.
-      </p>
+<body class="text-white" id="body">
+  <div class="container mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+      <div class="flex-1 min-w-[250px]">
+        <h1 class="text-3xl sm:text-4xl font-bold text-yellow-400">SocialFinder Pro</h1>
+        <p class="text-sm text-yellow-100">Pronađite javno dostupne informacije.</p>
+      </div>
+      <div class="flex space-x-2 items-center">
+        <select id="languageSelect" class="text-black rounded px-2 py-1">
+          <option value="sr">SR</option>
+          <option value="en">EN</option>
+        </select>
+        <button id="themeToggle" class="px-3 py-1 rounded bg-yellow-500 text-black">🌓</button>
+      </div>
     </div>
 
     <div class="max-w-3xl mx-auto bg-gray-900 p-6 rounded-lg shadow-md border border-yellow-400/20">
@@ -33,29 +54,39 @@
         <input
           type="text"
           id="searchInput"
-          placeholder="Ime, email ili broj telefona..."
+          placeholder="Ime, email, telefon ili grad..."
           class="flex-1 bg-transparent outline-none text-white placeholder-yellow-300"
         />
       </div>
-      <button
-        id="searchBtn"
-        class="w-full py-3 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold rounded-md transition"
-      >
-        Pretraži Osobu
-      </button>
+      <div class="flex flex-wrap gap-2 mb-4 mobile-flex">
+        <input type="text" id="locationFilter" placeholder="Grad (opciono)" class="px-2 py-1 rounded text-black w-full sm:w-auto"/>
+        <select id="sortBy" class="px-2 py-1 rounded text-black w-full sm:w-auto">
+          <option value="default">Sortiraj po...</option>
+          <option value="alpha">Po abecedi</option>
+          <option value="reverse">Obrnuto</option>
+        </select>
+        <button id="exportBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded w-full sm:w-auto">📁 Export</button>
+      </div>
+      <button id="searchBtn" class="w-full py-3 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold rounded-md transition">Pretraži Osobu</button>
     </div>
 
     <div id="searchResults" class="mt-10 hidden">
       <h2 class="text-2xl font-bold text-yellow-400 mb-4">Rezultati</h2>
-      <div id="resultsContainer" class="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3"></div>
+      <div id="resultsContainer" class="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mobile-grid"></div>
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   <script>
     const searchBtn = document.getElementById("searchBtn");
     const searchInput = document.getElementById("searchInput");
+    const locationInput = document.getElementById("locationFilter");
+    const sortBy = document.getElementById("sortBy");
     const searchResults = document.getElementById("searchResults");
     const resultsContainer = document.getElementById("resultsContainer");
+    const exportBtn = document.getElementById("exportBtn");
+    const themeToggle = document.getElementById("themeToggle");
+    const languageSelect = document.getElementById("languageSelect");
 
     function detectType(input) {
       if (/^\+?[0-9]{7,}$/.test(input)) return "phone";
@@ -63,81 +94,89 @@
       return "name";
     }
 
-    function generateLinks(query) {
-      const encoded = encodeURIComponent(query);
-      return [
-        {
-          title: "Google",
-          url: `https://www.google.com/search?q=${encoded}`,
-        },
-        {
-          title: "Facebook",
-          url: `https://www.facebook.com/search/top?q=${encoded}`,
-        },
-        {
-          title: "LinkedIn",
-          url: `https://www.linkedin.com/search/results/people/?keywords=${encoded}`,
-        },
-        {
-          title: "Twitter",
-          url: `https://twitter.com/search?q=${encoded}`,
-        },
-        {
-          title: "Instagram (via Google)",
-          url: `https://www.google.com/search?q=site:instagram.com+${encoded}`,
-        },
-      ];
-    }
+    function generateLinks(query, location) {
+  const username = query.toLowerCase().replace(/\s+/g, '');
+  return [
+    { title: "Facebook", url: `https://www.facebook.com/${username}` },
+    { title: "Instagram", url: `https://www.instagram.com/${username}` },
+    { title: "LinkedIn", url: `https://www.linkedin.com/in/${username}` },
+    { title: "Twitter", url: `https://twitter.com/${username}` },
+    { title: "TikTok", url: `https://www.tiktok.com/@${username}` }
+  ];
+}
+
 
     function getAvatar(input, type) {
       if (type === "email") {
-        const hash = md5(input.trim().toLowerCase());
+        const hash = CryptoJS.MD5(input.trim().toLowerCase()).toString();
         return `https://www.gravatar.com/avatar/${hash}?d=identicon`;
-      } else {
-        return `https://ui-avatars.com/api/?name=${encodeURIComponent(input)}&background=random`;
       }
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(input)}&background=random`;
     }
 
-    function md5(string) {
-      return CryptoJS.MD5(string).toString();
+    function exportResults() {
+      const content = resultsContainer.innerText;
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "search_results.txt";
+      link.click();
     }
 
     searchBtn.addEventListener("click", () => {
       const query = searchInput.value.trim();
+      const location = locationInput.value.trim();
       if (!query) return alert("Unesite podatak za pretragu.");
 
       const type = detectType(query);
       const avatarUrl = getAvatar(query, type);
-      const links = generateLinks(query);
+      const links = generateLinks(query, location);
 
       searchResults.classList.remove("hidden");
       resultsContainer.innerHTML = "";
 
-      const card = document.createElement("div");
-      card.className = "bg-gray-800 rounded-lg p-4 shadow-md";
-      card.innerHTML = `
-        <img src="${avatarUrl}" class="w-full h-40 object-cover rounded-md mb-4" />
-        <h3 class="text-lg font-semibold text-yellow-300 mb-2">${query}</h3>
-        <p class="text-sm text-gray-300 mb-4">Rezultati sa interneta:</p>
-        <ul class="space-y-2">
-          ${links
-            .map(
-              (link) => `
-            <li>
-              <a href="${link.url}" target="_blank" class="text-blue-400 hover:underline">
-                🔎 ${link.title}
-              </a>
-            </li>
-          `
-            )
-            .join("")}
-        </ul>
-      `;
+      let results = links.map((link) => {
+        return {
+          name: query,
+          platform: link.title,
+          url: link.url,
+          avatar: avatarUrl
+        };
+      });
 
-      resultsContainer.appendChild(card);
+      if (sortBy.value === "alpha") {
+        results.sort((a, b) => a.platform.localeCompare(b.platform));
+      } else if (sortBy.value === "reverse") {
+        results.sort((a, b) => b.platform.localeCompare(a.platform));
+      }
+
+      results.forEach((res) => {
+        const card = document.createElement("div");
+        card.className = "bg-gray-800 rounded-lg p-4 shadow-md";
+        card.innerHTML = `
+          <img src="${res.avatar}" class="w-full h-40 object-cover rounded-md mb-4" />
+          <h3 class="text-lg font-semibold text-yellow-300 mb-2">${res.name}</h3>
+          <p class="text-sm text-gray-300 mb-2">Platforma: ${res.platform}</p>
+          <a href="${res.url}" target="_blank" class="text-blue-400 hover:underline">🔎 Otvori</a>
+          <div class="mt-4 flex gap-3">
+            <a href="https://api.whatsapp.com/send?text=${encodeURIComponent(res.url)}" target="_blank" title="Podeli na WhatsApp">
+              <i class="fab fa-whatsapp text-green-400 text-xl"></i>
+            </a>
+            <a href="viber://forward?text=${encodeURIComponent(res.url)}" target="_blank" title="Podeli na Viber">
+              <i class="fab fa-viber text-purple-400 text-xl"></i>
+            </a>
+            <a href="mailto:?subject=Link%20do%20profila&body=${encodeURIComponent(res.url)}" title="Podeli emailom">
+              <i class="fas fa-envelope text-yellow-300 text-xl"></i>
+            </a>
+          </div>
+        `;
+        resultsContainer.appendChild(card);
+      });
     });
-  </script>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    exportBtn.addEventListener("click", exportResults);
+    themeToggle.addEventListener("click", () => document.getElementById("body").classList.toggle("dark-mode"));
+    languageSelect.addEventListener("change", (e) => alert(e.target.value === 'en' ? "English language support coming soon!" : "Jezik je već na srpskom."));
+  </script>
 </body>
 </html>
